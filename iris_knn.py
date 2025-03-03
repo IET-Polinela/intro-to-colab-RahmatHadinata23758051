@@ -1,65 +1,46 @@
-# mnist_cnn.py
-
-import tensorflow as tf
-from tensorflow import keras
+ # Import library yang diperlukan
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix
 
-# Load dataset MNIST
-mnist = keras.datasets.mnist
-(X_train, y_train), (X_test, y_test) = mnist.load_data()
+# Load dataset
+iris = load_iris()
+X, y = iris.data, iris.target
 
-# Normalisasi data
-X_train, X_test = X_train / 255.0, X_test / 255.0
+# Split dataset menjadi training dan testing
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Buat model CNN
-model = keras.Sequential([
-    keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 1)),
-    keras.layers.MaxPooling2D((2, 2)),
-    keras.layers.Flatten(),
-    keras.layers.Dense(128, activation='relu'),
-    keras.layers.Dense(10, activation='softmax')
-])
+# Normalisasi fitur
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
 
-# Compile model
-model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+# Buat model KNN dan latih dengan data training
+model = KNeighborsClassifier(n_neighbors=5)
+model.fit(X_train, y_train)
 
-# Training model & simpan history
-history = model.fit(X_train.reshape(-1, 28, 28, 1), y_train, epochs=5,
-                    validation_data=(X_test.reshape(-1, 28, 28, 1), y_test))
+# Prediksi data uji
+y_pred = model.predict(X_test)
 
-# Evaluasi model
-test_loss, test_acc = model.evaluate(X_test.reshape(-1, 28, 28, 1), y_test)
-print(f"Test accuracy: {test_acc:.2f}")
+# Evaluasi model dengan menghitung akurasi
+accuracy = accuracy_score(y_test, y_pred)
+print(f'Accuracy: {accuracy:.2f}')
 
-# Simpan hasil evaluasi ke file teks
-with open("evaluation.txt", "w") as f:
-    f.write(f"Test Loss: {test_loss:.4f}\n")
-    f.write(f"Test Accuracy: {test_acc:.4f}\n")
-print("Evaluation results saved to evaluation.txt.")
+# Hitung Confusion Matrix
+cm = confusion_matrix(y_test, y_pred)
 
-# Visualisasi loss & accuracy
-history_dict = history.history
-fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+# Visualisasi Confusion Matrix menggunakan heatmap
+plt.figure(figsize=(6, 4))
+sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=iris.target_names, yticklabels=iris.target_names)
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.title("Confusion Matrix for KNN Model")
 
-# Plot Loss
-ax[0].plot(history_dict['loss'], label='Train Loss', marker='o')
-ax[0].plot(history_dict['val_loss'], label='Validation Loss', marker='o')
-ax[0].set_title("Model Loss")
-ax[0].set_xlabel("Epoch")
-ax[0].set_ylabel("Loss")
-ax[0].legend()
-
-# Plot Accuracy
-ax[1].plot(history_dict['accuracy'], label='Train Accuracy', marker='o')
-ax[1].plot(history_dict['val_accuracy'], label='Validation Accuracy', marker='o')
-ax[1].set_title("Model Accuracy")
-ax[1].set_xlabel("Epoch")
-ax[1].set_ylabel("Accuracy")
-ax[1].legend()
-
-# Simpan grafik ke dalam file
-plt.savefig("training_performance.png")
+# Simpan gambar Confusion Matrix
+plt.savefig("knn_confusion_matrix.png")
 plt.show()
-
-print("Training performance plot saved to training_performance.png.")
